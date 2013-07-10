@@ -24,6 +24,7 @@ References:
 var fs = require('fs');
 var program = require('commander');
 var cheerio = require('cheerio');
+var rest = require('../node_modules/restler');
 var HTMLFILE_DEFAULT = "index.html";
 var CHECKSFILE_DEFAULT = "checks.json";
 
@@ -40,23 +41,19 @@ var cheerioHtmlFile = function(htmlfile) {
    return cheerio.load(fs.readFileSync(htmlfile));
 };
 
-var cheerioHtmlUrl = function(url) {
-   return cheerio.load();
-};
-                   
 var loadChecks = function(checksfile) {
     return JSON.parse(fs.readFileSync(checksfile));
 };
                            
-var checkHtmlFile = function(htmlfile, checksfile) {
-    $ = cheerioHtmlFile(htmlfile);
+var checkHtmlFile = function(content, checksfile) {
+    $ = cheerio.load(content);
     var checks = loadChecks(checksfile).sort();
     var out = {};
-   for(var ii in checks) {
-       var present = $(checks[ii]).length > 0;
-       out[checks[ii]] = present;
-   }
-   return out;
+    for(var ii in checks) {
+        var present = $(checks[ii]).length > 0;
+        out[checks[ii]] = present;
+    }
+    return out;
 };
                            
 var clone = function(fn) {
@@ -71,22 +68,25 @@ if(require.main == module) {
     .option('-f, --file <html_file>', 'Path to index.html')
     .option('-u, --url <url_link>', 'URL link')
     .parse(process.argv);
-    if (program.file) console.log('file '+program.file);
-    if (program.url) {
-        var rest = require('../node_modules/restler');
-            
-            rest.get('http://google.com').on('complete', function(result) {
-                if (result instanceof Error) {
-                    sys.puts('Error: ' + result.message);
-                    this.retry(5000); // try again after 5 sec
-                } else {
-                    console.log(result);
-                }
-            });
+    var checkJson = null;
+    if (program.file) {
+        checkJson = checkHtmlFile(fs.readFileSync(program.file), program.checks);
+        var outJson = JSON.stringify(checkJson, null, 4);
+        console.log(outJson);
     }
-    //var checkJson = checkHtmlFile(program.file, program.checks);
-    //var outJson = JSON.stringify(checkJson, null, 4);
-    //console.log(outJson);
+    else if (program.url) {
+        rest.get('http://google.com').on('complete', function(result) {
+              if (result instanceof Error) {
+                  sys.puts('Error: ' + result.message);
+                  this.retry(5000); // try again after 5 sec
+              } else {
+                  var buf = new Buffer(result);
+                  checkJson = checkHtmlFile(buf, program.checks);
+                  var outJson = JSON.stringify(checkJson, null, 4);
+                  console.log(outJson);
+              }
+        });
+    }
 } else {
     exports.checkHtmlFile = checkHtmlFile;
 }
