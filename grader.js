@@ -75,13 +75,12 @@ if(require.main == module) {
         console.log(outJson);
     }
     else if (program.url) {
-        rest.get('http://google.com').on('complete', function(result) {
+        rest.get(program.url).on('complete', function(result) {
               if (result instanceof Error) {
-                  sys.puts('Error: ' + result.message);
+                  console.log('Error: ' + result.message);
                   this.retry(5000); // try again after 5 sec
               } else {
-                  var buf = new Buffer(result);
-                  checkJson = checkHtmlFile(buf, program.checks);
+                  checkJson = checkHtmlFile(new Buffer(result), program.checks);
                   var outJson = JSON.stringify(checkJson, null, 4);
                   console.log(outJson);
               }
